@@ -1,7 +1,5 @@
 nopublish/*
-**/*.DS_Store
 
-data/data-science-bowl-2019/*
 
 # History files
 .Rhistory
