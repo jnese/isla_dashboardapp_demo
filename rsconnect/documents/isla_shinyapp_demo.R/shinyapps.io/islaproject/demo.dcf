@@ -1,0 +1,12 @@
+name: demo
+title: demo
+username:
+account: islaproject
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3385746
+bundleId: 3972562
+url: https://islaproject.shinyapps.io/demo/
+when: 1607634355.45654
+asMultiple: FALSE
+asStatic: FALSE

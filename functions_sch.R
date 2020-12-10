@@ -446,7 +446,7 @@ sch_incidents_time_plot_fx <- function(input){
     }
     
     inc_hour_dta %>% 
-      mutate(entry_hour = paste0(as.character(hour(time_in)), "am"),
+      mutate(entry_hour = paste0(as.character(hour(anytime::anytime(time_in))), "am"),
              entry_hour = recode(entry_hour,
                                  "12am" = "12pm",
                                  "13am" = "1pm",
@@ -567,7 +567,7 @@ sch_minslost_time_plot_fx <- function(input){
     }
     
     inc_hour_dta %>% 
-      mutate(entry_hour = paste0(as.character(hour(time_in)), "am"),
+      mutate(entry_hour = paste0(as.character(hour(anytime::anytime(time_in))), "am"),
              entry_hour = recode(entry_hour,
                                  "12am" = "12pm",
                                  "13am" = "1pm",
