@@ -1,9 +1,22 @@
 
-stu_timelost_plot_fx <- function(input){
-  stu_dta <- dta %>% 
+get_stu_data <- function(input, check_rows = TRUE) {
+  req(input$student_name, input$stu_daterange)
+  
+  d <- dta %>%
     filter(student_name == input$student_name,
            date >= input$stu_daterange[[1]],
-           date <= input$stu_daterange[[2]]) 
+           date <= input$stu_daterange[[2]])
+  
+  if (check_rows) {
+    validate(need(nrow(d) > 0,
+                  "No incidents for this student in the selected date range."))
+  }
+  d
+}
+
+stu_timelost_plot_fx <- function(input){
+  
+  stu_dta <- get_stu_data(input)
   
   date_breaks_stu <- unique(stu_dta$date)
   
@@ -33,10 +46,7 @@ make_time <- function(x){
 
 stu_timelost_table_fx <- function(input){
   
-  stu_dta <- dta %>%
-    filter(student_name == input$student_name,
-          date >= input$stu_daterange[[1]],
-          date <= input$stu_daterange[[2]])
+  stu_dta <- get_stu_data(input)
   
   if (as_date(input$intervention1) %in% stu_dta$date) {
     stu_dta <- stu_dta %>% 
@@ -93,10 +103,7 @@ stu_timelost_table_fx <- function(input){
 
 stu_fidelity_plot_fx <- function(input){
   
-  stu_dta <- dta %>% 
-    filter(student_name == input$student_name,
-           date >= input$stu_daterange[[1]],
-           date <= input$stu_daterange[[2]])  
+  stu_dta <- get_stu_data(input)  
 
   tx_rows <- 
     if (as_date(input$intervention1) %in% stu_dta$date) {
@@ -164,10 +171,7 @@ stu_fidelity_plot_fx <- function(input){
 
 stu_fidelity_table_fx <- function(input){
   
-  stu_dta <- dta %>%
-    filter(student_name == input$student_name,
-           date >= input$stu_daterange[[1]],
-           date <= input$stu_daterange[[2]])
+  stu_dta <- get_stu_data(input)
   
   if (as_date(input$intervention1) %in% stu_dta$date) {
     stu_dta <- stu_dta %>% 
@@ -224,21 +228,17 @@ stu_fidelity_table_fx <- function(input){
 
 stu_totalincidents_box_fx <- function(input){
   
-  dta %>%
-    filter(student_name == input$student_name,
-           date >= input$stu_daterange[[1]],
-           date <= input$stu_daterange[[2]]) %>% 
+  get_stu_data(input, check_rows = FALSE) %>% 
     nrow()
+  
 }
 
 stu_totalminslost_box_fx <- function(input){
   
-  dta %>%
-    filter(student_name == input$student_name,
-           date >= input$stu_daterange[[1]],
-           date <= input$stu_daterange[[2]]) %>% 
-    summarize(minslost = round(sum(time_lost, na.rm = TRUE)), 0) %>% 
+  get_stu_data(input, check_rows = FALSE) %>%
+    summarize(minslost = round(sum(time_lost, na.rm = TRUE), 0)) %>%
     pull(minslost)
+  
 }
 
 downloadplot_stu_fx <- function(plotname, input, fx, inputstudentname, inputtime){

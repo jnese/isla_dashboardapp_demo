@@ -1,7 +1,8 @@
 library(tidyverse)
 library(lubridate)
 
-dta <- read_csv(here::here("data", "dta.csv"))
+dta <- read_csv(here::here("data", "dta.csv")) |> 
+  mutate(date = as_date(parse_date_time(date, orders = c("mdy", "ymd")))) 
 
 #######################################
 # Student Name list for drop-down selectInput

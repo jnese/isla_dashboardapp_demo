@@ -1,102 +1,55 @@
 
-sch_totalincidents_box_fx <- function(input){
+
+get_sch_data <- function(input, check_rows = TRUE) {
+  req(input$grade_level, input$sch_daterange)
   
-  if (input$grade_level == "All") {
-    dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>%
-      pull(student_name) %>%
-      length() %>% 
-      formatC(., big.mark=",")
-  } else {
-    dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>%
-      pull(student_name) %>%
-      length() %>% 
-      formatC(., big.mark=",")
+  d <- dta %>%
+    filter(date >= input$sch_daterange[[1]],
+           date <= input$sch_daterange[[2]])
+  
+  if (input$grade_level != "All") {
+    d <- d %>% filter(grade == input$grade_level)
   }
+  
+  if (check_rows) {
+    validate(need(nrow(d) > 0, "No incidents for this grade and date range."))
+  }
+  d
+}
+
+sch_totalincidents_box_fx <- function(input){
+  get_sch_data(input, check_rows = FALSE) %>%
+    nrow() %>%
+    formatC(big.mark = ",")
 }
 
 sch_totalstudents_box_fx <- function(input){
-  
-  if (input$grade_level == "All") {
-    dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>%
-      distinct(student_name) %>% 
-      nrow()
-  } else {
-    dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>%
-      distinct(student_name) %>% 
-      nrow()
-  }
+  get_sch_data(input, check_rows = FALSE) %>%
+    distinct(student_name) %>%
+    nrow()
 }
 
 sch_totalhourslost_box_fx <- function(input){
-  
-  if (input$grade_level == "All") {
-    dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>%
-      summarize(totalhours = round(sum(time_lost, na.rm = TRUE)/60, 0)) %>% 
-      pull(totalhours) %>% 
-      formatC(., big.mark=",")
-  } else {
-    dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>%
-      summarize(totalhours = round(sum(time_lost, na.rm = TRUE)/60, 0)) %>% 
-      pull(totalhours) %>% 
-      formatC(., big.mark=",")
-  }
+  get_sch_data(input, check_rows = FALSE) %>%
+    summarize(totalhours = round(sum(time_lost, na.rm = TRUE) / 60, 0)) %>%
+    pull(totalhours) %>%
+    formatC(big.mark = ",")
 }
 
 sch_aveminslost_box_fx <- function(input){
-  
-  if (input$grade_level == "All") {
-    dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>%
-      summarize(avemins = round(mean(time_lost, na.rm = TRUE), 0)) %>% 
-      pull(avemins)
-  } else {
-    dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>%
-      summarize(avemins = round(mean(time_lost, na.rm = TRUE), 0)) %>% 
-      pull(avemins)
-  }
+  d <- get_sch_data(input, check_rows = FALSE)
+  if (nrow(d) == 0) return(0)   # mean() of nothing would give NaN
+  round(mean(d$time_lost, na.rm = TRUE), 0)
 }
 
 sch_incidstu_plot_fx <- function(input){
   
-  if (input$grade_level == "All") {
-    top_students <- dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>% 
-      mutate(student_name = str_trim(student_name, side = c("left"))) %>% 
-      group_by(student_name) %>% 
-      summarize(Incidents = n()) %>% 
-      arrange(-Incidents) %>% 
-      slice(1:10)
-  } else {
-    top_students <- dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>% 
-      mutate(student_name = str_trim(student_name, side = c("left"))) %>% 
-      group_by(student_name) %>% 
-      summarize(Incidents = n()) %>% 
-      arrange(-Incidents) %>% 
-      slice(1:10)
-  }
+  top_students <- get_sch_data(input) %>%
+    mutate(student_name = str_trim(student_name, side = "left")) %>%
+    group_by(student_name) %>%
+    summarize(Incidents = n()) %>%
+    arrange(-Incidents) %>%
+    slice(1:10)
   
 top_students %>% 
   ggplot(aes(fct_reorder(factor(student_name), Incidents), Incidents)) +
@@ -111,26 +64,12 @@ top_students %>%
 
 sch_incidtch_plot_fx <- function(input){
   
-  if (input$grade_level == "All") {
-    top_teachers <- dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>% 
-      group_by(teacher_name) %>% 
-      summarize(Incidents = n()) %>% 
-      arrange(-Incidents) %>% 
-      mutate(fillr = ifelse(teacher_name == "Missing", "two", "one")) %>%
-      slice(1:10)
-  } else {
-    top_teachers <- dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>% 
-      group_by(teacher_name) %>% 
-      summarize(Incidents = n()) %>% 
-      arrange(-Incidents) %>% 
-      mutate(fillr = ifelse(teacher_name == "Missing", "two", "one")) %>%
-      slice(1:10)
-  }
+  top_teachers <- get_sch_data(input) %>%
+    group_by(teacher_name) %>%
+    summarize(Incidents = n()) %>%
+    arrange(-Incidents) %>%
+    mutate(fillr = ifelse(teacher_name == "Missing", "two", "one")) %>%
+    slice(1:10)
   
   top_teachers %>% 
     ggplot(aes(fct_reorder(factor(teacher_name), Incidents), as.double(Incidents), fill = fillr)) +
@@ -147,43 +86,19 @@ sch_incidtch_plot_fx <- function(input){
 
 sch_relationships_table_fx <- function(input){
   
-  if (input$grade_level == "All") {
-    top_teachers <- dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>% 
-      mutate(student_name = str_trim(student_name, side = "left")) %>% 
-      group_by(student_name, teacher_name) %>% 
-      summarize(Incidents = n()) %>% 
-      arrange(-Incidents) %>% 
-      rename(`Student` = student_name, `Teacher` = teacher_name) %>% 
-      datatable(., filter = "top", options = list(dom = "t"))
-  } else {
-    top_teachers <- dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) %>% 
-      mutate(student_name = str_trim(student_name, side = "left")) %>% 
-      group_by(student_name, teacher_name) %>% 
-      summarize(Incidents = n()) %>% 
-      arrange(-Incidents) %>% 
-      rename(`Student` = student_name, `Teacher` = teacher_name) %>% 
-      datatable(., filter = "top", options = list(dom = "t"))
-  }
-  
+  get_sch_data(input) %>%
+    mutate(student_name = str_trim(student_name, side = "left")) %>%
+    group_by(student_name, teacher_name) %>%
+    summarize(Incidents = n()) %>%
+    arrange(-Incidents) %>%
+    rename(`Student` = student_name, `Teacher` = teacher_name) %>%
+    datatable(., filter = "top", options = list(dom = "t"))
+
 }
 
 sch_fidelity_plot_fx <- function(input){
   
-  if (input$grade_level == "All") {
-    isla_dta <- dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) 
-  } else {
-    isla_dta <- dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]])
-  }
+  isla_dta <- get_sch_data(input)
   
     isla_qs <- isla_dta %>% 
       select(isla_debrief_completed,
@@ -233,16 +148,7 @@ sch_fidelity_plot_fx <- function(input){
 
 sch_reenter_plot_fx <- function(input){
   
-  if (input$grade_level == "All") {
-    reenter_dta <- dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) 
-  } else {
-    reenter_dta <- dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]])
-  }
+  reenter_dta <- get_sch_data(input)
   
   enter_qs <- reenter_dta %>% 
     select(did_the_student_reenter_the_classroom) %>% 
@@ -287,24 +193,18 @@ sch_reenter_plot_fx <- function(input){
 
 sch_whynoreentry_plot_fx <- function(input){
   
-  if (input$grade_level == "All") {
-    why_dta <- dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) 
-  } else {
-    why_dta <- dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]])
-  }
+  why_dta <- get_sch_data(input) %>%
+    filter(did_the_student_reenter_the_classroom == "No")
   
-  why <- why_dta %>% 
-    filter(did_the_student_reenter_the_classroom == "No") %>% 
-    select(if_not_why) %>% 
-    gather(why, reason) %>% 
+  validate(need(nrow(why_dta) > 0,
+                "No students were kept out of class in this grade and date range."))
+  
+  why <- why_dta %>%
+    select(if_not_why) %>%
+    gather(why, reason) %>%
     mutate(reason = ifelse(is.na(reason), "Missing", reason),
-           reason = fct_infreq(reason)) %>% 
-    janitor::tabyl(reason) %>% 
+           reason = fct_infreq(reason)) %>%
+    janitor::tabyl(reason) %>%
     as_tibble()
   
   why %>% 
@@ -324,16 +224,7 @@ sch_whynoreentry_plot_fx <- function(input){
 
 sch_adminsafety_plot_fx <- function(input){
   
-  if (input$grade_level == "All") {
-    admin_dta <- dta %>%
-      filter(date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]]) 
-  } else {
-    admin_dta <- dta %>%
-      filter(grade == input$grade_level,
-             date >= input$sch_daterange[[1]],
-             date <= input$sch_daterange[[2]])
-  }
+  admin_dta <- get_sch_data(input)
   
   admin <- admin_dta %>% 
     select(does_students_behavior_pose_a_safety_risk_to_them_or_others,
@@ -375,20 +266,11 @@ sch_adminsafety_plot_fx <- function(input){
 
 sch_incidents_time_plot_fx <- function(input){
   
+  inc_dta <- get_sch_data(input)
+  
   if (input$sch_incidents_plotselect == "Monthly") {
     
-    if (input$grade_level == "All") {
-      inc_mo_dta <- dta %>%
-        filter(date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]]) 
-    } else {
-      inc_mo_dta <- dta %>%
-        filter(grade == input$grade_level,
-               date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]])
-    }
-    
-    inc_mo_dta %>% 
+    inc_dta %>% 
       mutate(month = month(date, label = TRUE, abbr = TRUE)) %>% 
       group_by(month) %>% 
       count() %>%
@@ -406,18 +288,7 @@ sch_incidents_time_plot_fx <- function(input){
     
   } else if (input$sch_incidents_plotselect == "Daily") {
     
-    if (input$grade_level == "All") {
-      inc_day_dta <- dta %>%
-        filter(date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]]) 
-    } else {
-      inc_day_dta <- dta %>%
-        filter(grade == input$grade_level,
-               date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]])
-    }
-    
-    inc_day_dta %>% 
+    inc_dta %>% 
       drop_na(date) %>%
       group_by(date) %>% 
       count() %>% 
@@ -434,18 +305,7 @@ sch_incidents_time_plot_fx <- function(input){
     
   } else if (input$sch_incidents_plotselect == "Time of day") {
     
-    if (input$grade_level == "All") {
-      inc_hour_dta <- dta %>%
-        filter(date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]]) 
-    } else {
-      inc_hour_dta <- dta %>%
-        filter(grade == input$grade_level,
-               date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]])
-    }
-    
-    inc_hour_dta %>% 
+    inc_dta %>% 
       mutate(entry_hour = paste0(as.character(hour(anytime::anytime(time_in))), "am"),
              entry_hour = recode(entry_hour,
                                  "12am" = "12pm",
@@ -469,18 +329,7 @@ sch_incidents_time_plot_fx <- function(input){
     
   } else {
     
-    if (input$grade_level == "All") {
-      inc_dow_dta <- dta %>%
-        filter(date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]]) 
-    } else {
-      inc_dow_dta <- dta %>%
-        filter(grade == input$grade_level,
-               date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]])
-    }
-    
-    inc_dow_dta %>% 
+    inc_dta %>% 
       mutate(weekday = wday(date, label = TRUE, abbr = TRUE),
              weekday = ifelse(is.na(weekday), "Missing", as.character(weekday)),
              weekday = fct_relevel(weekday, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Missing")) %>% 
@@ -500,20 +349,11 @@ sch_incidents_time_plot_fx <- function(input){
 
 sch_minslost_time_plot_fx <- function(input){
   
+  inc_dta <- get_sch_data(input)
+  
   if (input$sch_minslost_plotselect == "Monthly") {
     
-    if (input$grade_level == "All") {
-      inc_mo_dta <- dta %>%
-        filter(date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]]) 
-    } else {
-      inc_mo_dta <- dta %>%
-        filter(grade == input$grade_level,
-               date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]])
-    }
-    
-    inc_mo_dta %>% 
+    inc_dta %>% 
       mutate(month = month(date, label = TRUE, abbr = TRUE)) %>%
       mutate(month = ifelse(is.na(month), "Missing", as.character(month)),
              month = fct_relevel(month, "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Missing")) %>% 
@@ -530,18 +370,7 @@ sch_minslost_time_plot_fx <- function(input){
     
   } else if (input$sch_minslost_plotselect == "Daily") {
     
-    if (input$grade_level == "All") {
-      inc_day_dta <- dta %>%
-        filter(date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]]) 
-    } else {
-      inc_day_dta <- dta %>%
-        filter(grade == input$grade_level,
-               date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]])
-    }
-    
-    inc_day_dta %>% 
+    inc_dta %>% 
       group_by(date) %>% 
       summarize(mean_minutes = mean(time_lost, na.rm = TRUE)) %>% 
       ggplot(aes(date, mean_minutes)) +
@@ -555,18 +384,7 @@ sch_minslost_time_plot_fx <- function(input){
     
   } else if (input$sch_minslost_plotselect == "Time of day") {
     
-    if (input$grade_level == "All") {
-      inc_hour_dta <- dta %>%
-        filter(date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]]) 
-    } else {
-      inc_hour_dta <- dta %>%
-        filter(grade == input$grade_level,
-               date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]])
-    }
-    
-    inc_hour_dta %>% 
+    inc_dta %>% 
       mutate(entry_hour = paste0(as.character(hour(anytime::anytime(time_in))), "am"),
              entry_hour = recode(entry_hour,
                                  "12am" = "12pm",
@@ -591,18 +409,7 @@ sch_minslost_time_plot_fx <- function(input){
     
   } else {
     
-    if (input$grade_level == "All") {
-      inc_dow_dta <- dta %>%
-        filter(date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]]) 
-    } else {
-      inc_dow_dta <- dta %>%
-        filter(grade == input$grade_level,
-               date >= input$sch_daterange[[1]],
-               date <= input$sch_daterange[[2]])
-    }
-    
-    inc_dow_dta %>% 
+    inc_dta %>% 
       mutate(weekday = wday(date, label = TRUE, abbr = TRUE),
              weekday = ifelse(is.na(weekday), "Missing", as.character(weekday)),
              weekday = fct_relevel(weekday, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Missing")) %>% 

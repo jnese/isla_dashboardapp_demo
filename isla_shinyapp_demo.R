@@ -41,7 +41,7 @@ addDeps <- function(x) {
 }
 
 
-ui <- navbarPage("ISLA Dashboard 2.0", theme = shinytheme("flatly"),
+ui <- navbarPage("ISLA Dashboard", theme = shinytheme("flatly"),
         tabPanel("School", icon = icon("school"),
           sidebarPanel(width = 3,
             radioButtons("grade_level", "Select grade:", choices = c("All" = "All",
@@ -141,7 +141,9 @@ ui <- navbarPage("ISLA Dashboard 2.0", theme = shinytheme("flatly"),
         ),
         tabPanel("Student", icon = icon("user"),
           sidebarPanel(width = 3,
-            selectInput("student_name", "Student Name:", choices = student_name),
+            selectizeInput("student_name", "Student", choices = NULL,
+                          options = list(placeholder = "Type a name...")),
+#            selectInput("student_name", "Student Name:", choices = student_name),
             dateRangeInput("stu_daterange", "Select the date range", 
                            min = min_date, max = max_date,
                            start = min_date, end = max_date),
@@ -197,7 +199,12 @@ ui <- addDeps(
   )
 )
 
-server <- function(input, output) {
+server <- function(input, output, session) {
+
+  updateSelectizeInput(session, "student_name",
+                       choices = sort(unique(student_name$student_name)),
+                       server = TRUE)
+  
 # SCHOOL
   output$sch_totalincidents_box <- renderValueBox({valueBox(
     sch_totalincidents_box_fx(input), 
